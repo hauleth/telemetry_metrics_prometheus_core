@@ -29,13 +29,29 @@ defmodule TelemetryMetricsPrometheus.Core.EventHandler do
   def keep?(nil, _metadata), do: true
   def keep?(keep_fun, metadata), do: keep_fun.(metadata)
 
-  @spec validate_tags_in_tag_values(Telemetry.Metrics.tags(), map()) :: :ok | tags_missing_error()
-  def validate_tags_in_tag_values(tags, tag_values) do
-    case Enum.reject(tags, &match?(%{^&1 => _}, tag_values)) do
-      [] -> :ok
-      missing_tags -> {:tags_missing, missing_tags}
+  @spec validate_tags_in_tag_values(Telemetry.Metrics.tags(), map()) ::
+          {:ok, map()} | tags_missing_error()
+  def validate_tags_in_tag_values(tags, tag_values)
+      when is_list(tags) and is_map(tag_values) do
+    do_recur_ok(tags, tag_values, [])
+  end
+
+  defp do_recur_ok([], _, acc), do: {:ok, :maps.from_list(acc)}
+
+  defp do_recur_ok([k | rest], tag_values, acc) do
+    case tag_values do
+      %{^k => val} -> do_recur_ok(rest, tag_values, [{k, val} | acc])
+      _ -> do_recur_fail(rest, tag_values, [k])
     end
   end
+
+  defp do_recur_fail([], _, acc), do: {:tags_missing, acc}
+
+  defp do_recur_fail([k | rest], tag_values, acc) when is_map_key(tag_values, k),
+    do: do_recur_fail(rest, tag_values, acc)
+
+  defp do_recur_fail([k | rest], tag_values, acc),
+    do: do_recur_fail(rest, tag_values, [k | acc])
 
   @spec get_measurement(
           measurements :: :telemetry.event_measurements(),

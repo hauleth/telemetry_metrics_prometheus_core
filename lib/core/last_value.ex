@@ -55,9 +55,8 @@ defmodule TelemetryMetricsPrometheus.Core.LastValue do
     with true <- EventHandler.keep?(config.keep, metadata),
          {:ok, measurement} <-
            EventHandler.get_measurement(measurements, metadata, config.measurement),
-         mapped_values <- config.tag_values_fun.(metadata),
-         :ok <- EventHandler.validate_tags_in_tag_values(config.tags, mapped_values) do
-      labels = Map.take(mapped_values, config.tags)
+         mapped_values = config.tag_values_fun.(metadata),
+         {:ok, labels} <- EventHandler.validate_tags_in_tag_values(config.tags, mapped_values) do
       key = {config.name, labels}
 
       :ets.insert(config.table, {key, measurement})

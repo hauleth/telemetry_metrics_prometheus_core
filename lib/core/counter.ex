@@ -52,9 +52,8 @@ defmodule TelemetryMetricsPrometheus.Core.Counter do
 
   def handle_event(_event, _measurements, metadata, config) do
     with true <- EventHandler.keep?(config.keep, metadata),
-         mapped_values <- config.tag_values_fun.(metadata),
-         :ok <- EventHandler.validate_tags_in_tag_values(config.tags, mapped_values) do
-      labels = Map.take(mapped_values, config.tags)
+         mapped_values = config.tag_values_fun.(metadata),
+         {:ok, labels} <- EventHandler.validate_tags_in_tag_values(config.tags, mapped_values) do
       key = {config.name, labels}
       _res = :ets.update_counter(config.table, key, 1, {key, 0})
       :ok
